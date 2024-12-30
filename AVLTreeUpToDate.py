@@ -75,13 +75,14 @@ class AVLNode(object):
 	def set_right(self, node):
 		self.right = node
 		return None
+	
 	def set_right_with_parents(self,node):
 		self.right = node
 		node.set_parent(self)
 		return None
 	
 	def set_left(self, node):
-		self.right = node
+		self.left = node
 		return None
 	
 	def set_left_with_parents(self,node):
@@ -129,6 +130,8 @@ class AVLTree(object):
 	def __init__(self):
 		self.root = None
 		self.max_node = None
+
+
 	"""searches for a node in the dictionary corresponding to the key (starting at the root)
         
 	@type key: int
@@ -137,7 +140,6 @@ class AVLTree(object):
 	@returns: a tuple (x,e) where x is the node corresponding to key (or None if not found),
 	and e is the number of edges on the path between the starting node and ending node+1.
 	"""
-
 	def search(self, key):
 		#We used helper function - Search_helper.
 		#We passed 1 as the value of the depth since we have been asked to return the length of the search route + 1.
@@ -153,20 +155,13 @@ class AVLTree(object):
 		#Base case2:
 		if node.get_key() == key:
 			return node, depth
-		#Since AVL is kind of a binary search tree, we used the fact that the keys of the left side of the tree are smaller than the node's key, also the right side is bigger.
+		#Since AVL is kind of a binary search tree, we used the fact that the keys of the left side of the tree are smaller than the node's key,
+		#also the right side is bigger.
 		if key < node.get_key():
 			return self.search_helper(node.get_left(), key, depth + 1)
 		else:
 			return self.search_helper(node.get_right(), key, depth + 1)
             
-	"""searches for a node in the dictionary corresponding to the key, starting at the max
-        
-	@type key: int
-	@param key: a key to be searched
-	@rtype: (AVLNode,int)
-	@returns: a tuple (x,e) where x is the node corresponding to key (or None if not found),
-	and e is the number of edges on the path between the starting node and ending node+1.
-	"""
 	#this function will help us maintain the max node filed
 	def find_max_node(self):
 		#If the tree is empty or the root isn't real, there's no max node
@@ -177,10 +172,16 @@ class AVLTree(object):
 		while current.get_right().is_real_node():
 			current = current.get_right()
 		return current
-    
-    
 
 
+	"""searches for a node in the dictionary corresponding to the key, starting at the max
+        
+	@type key: int
+	@param key: a key to be searched
+	@rtype: (AVLNode,int)
+	@returns: a tuple (x,e) where x is the node corresponding to key (or None if not found),
+	and e is the number of edges on the path between the starting node and ending node+1.
+	"""
 	def finger_search(self, key):
 		# If max_node is not set or is a virtual node, the tree is effectively empty
 		if (self.max_node is None) or (not self.max_node.is_real_node()):
@@ -280,12 +281,6 @@ class AVLTree(object):
 			current = current.get_parent()
 		# 4) Return (x, e, h) per your assignment specs.
 		return inserted_node, e, promote_count
-		 
-		
-
-
-
-
 
 	def normal_insert(self, key, val, node):
 		if (node is None) or (not node.is_real_node()):
@@ -338,18 +333,6 @@ class AVLTree(object):
 			node.set_right_with_parents(inserted_node)
 			return inserted_node, e2
 	
-	"""inserts a new node into the dictionary with corresponding key and value, starting at the max
-
-	@type key: int
-	@pre: key currently does not appear in the dictionary
-	@param key: key of item that is to be inserted to self
-	@type val: string
-	@param val: the value of the item
-	@rtype: (AVLNode,int,int)
-	@returns: a 3-tuple (x,e,h) where x is the new node,
-	e is the number of edges on the path between the starting node and new node before rebalancing,
-	and h is the number of PROMOTE cases during the AVL rebalancing
-	"""
 	def rotate_left(self,z):
 		# y is z's right child
 		y = z.get_right()
@@ -406,20 +389,241 @@ class AVLTree(object):
 
 
 	
+	# TODO: do finger insert
+	"""inserts a new node into the dictionary with corresponding key and value, starting at the max
 
+	@type key: int
+	@pre: key currently does not appear in the dictionary
+	@param key: key of item that is to be inserted to self
+	@type val: string
+	@param val: the value of the item
+	@rtype: (AVLNode,int,int)
+	@returns: a 3-tuple (x,e,h) where x is the new node,
+	e is the number of edges on the path between the starting node and new node before rebalancing,
+	and h is the number of PROMOTE cases during the AVL rebalancing
+	"""
 	def finger_insert(self, key, val):
 		return None, -1, -1
 
+	# TODO: test successor
+	""" returns the successor of a given node, that's inside the tree """
+	def successor(self, node : AVLNode):
+		# end cases
+		if node is None or not node.is_real_node():
+			return None
+		# if we dont have right child we start going upwards:
+		if node.get_right() is None:
+			if node.get_parent is not None:
+				while node.get_parent().get_key() < node.get_key():
+					node = node.get_parent()
+				if node.get_parent() is None:
+					return None
+				return node.get_parent()
+			else:
+				return None
+		# if we have right child:
+		node = node.get_right()
+		while node is not None and node.get_left() is not None:
+			node = node.get_left()
+		return node
 
+
+	# TODO: test predecessor
+	""" returns the predecessor of a given node, that's inside the tree """
+	def predecessor(self, node : AVLNode):
+		# end cases
+		if node is None or not node.is_real_node():
+			return None
+		# return max of left subtree, if exists
+		if node.get_left() is not None:
+			node = node.get_left()
+			while node is not None and node.get_right() is not None:
+				node = node.get_right()
+			return node
+		# left subtree doesnt exist, travel up the tree:
+		if node.get_parent() is not None:
+			while node.get_parent().get_key() > node.get_key():
+				node = node.get_parent()
+			if node.get_parent() is None:
+				return None
+			return node.get_parent()
+		return None
+
+		
+		return
+
+
+	# TODO: test DRR
+	def double_rotate_right(self, z : AVLNode):
+		zParent = z.get_parent()
+		self.rotate_right(z.get_left())
+		self.rotate_left(zParent)
+		return None
+
+	
+	# TODO: test DRL
+	def double_rotate_left(self, z : AVLNode):
+		zParent = z.get_parent()
+		self.rotate_left(z.get_right())
+		self.rotate_right(zParent)
+		return None
+	
+	
+	def switch_two_nodes(self, node1, node2):
+		nodeP = node1.get_parent()
+		nodeR = node1.get_right()
+		nodeL = node1.get_left()
+		
+		node1.set_parent(node2.get_parent())
+		node1.set_right(node2.get_right())
+		node1.set_left(node2.get_left())
+		
+		node2.set_parent(nodeP)
+		node2.set_right(nodeR)
+		node2.set_left(nodeL)
+		
+		node1.update_height()
+		node1.update_size()
+		node2.update_size()
+		node2.update_height()
+	
+	
+	# TODO delete() tests: when we delete root, leaf, unary node, middle node, min and max
 	"""deletes node from the dictionary
 
 	@type node: AVLNode
 	@pre: node is a real pointer to a node in self
 	"""
+	# TODO: IMPORTANT: Delete "node : AVLNode" from function signature!
 	def delete(self, node):
+		if node.get_left() is not None and node.get_right() is not None:
+			# node isn't a leaf nor a unary node
+			pre = self.predecessor(node)
+			suc = self.successor(node)
+			# one of them has to be a leaf or a unary node
+			if pre.get_left() is None or pre.get_right() is None:
+				self.switch_two_nodes(node, pre) # switches node with predecessor and updates heights/sizes
+			elif suc.get_left() is None or suc.get_right() is None:
+				self.switch_two_nodes(node, suc) # switches node with successor and updates heights/sizes
+		
+		# node is a leaf or unary
+		parent = node.get_parent()
+		if node.get_left() is None and node.get_right() is None:
+			# node is a leaf
+			if node.parent is None: # single node in a tree
+				self = AVLTree()
+				return
+			if node.get_key() < parent.get_key():
+				# node is a left leaf
+				parent.set_left(None)
+				if node.get_height() > parent.get_right().get_height(): # higher than brother by 1
+					self.case22(parent)
+				if node.get_height() < parent.get_right().get_height(): # lower than brother by 1
+					# TODO: GO TO (3,1)
+					pass
+				# same height brothers
+				return
+			else:
+				# node is a right leaf
+				parent.set_right(None)
+				if node.get_height() > parent.get_left().get_height(): # higher than brother by 1
+					self.case22(parent)
+				if node.get_height() < parent.get_left().get_height(): # lower than brother by 1
+					# TODO: GO TO (1,3)
+					pass
+				# same height brothers
+				return
+		else:
+			# node is unary
+			child = node.get_right() if node.get_right() is not None else node.get_left()
+			if parent is None: # the tree is only node and his single child
+				self.root = child
+				self.root.set_parent(None)
+				return
+			if node.get_key() < parent.get_key():
+				# node is a left unary
+				parent.set_left_with_parents(child)
+				if node.get_height() > parent.get_right().get_height(): # higher than brother by 1
+					self.case22(parent)
+				if node.get_height() < parent.get_right().get_height(): # lower than brother by 1
+					# TODO: GO TO (3,1)
+					pass
+				# same height brothers
+				return
+			else:
+				# node is a right unary
+				parent.set_right_with_parents(child)
+				if node.get_height() > parent.get_left().get_height(): # higher than brother by 1
+					self.case22(parent)
+				if node.get_height() < parent.get_left().get_height(): # lower than brother by 1
+					# TODO: GO TO (1,3)
+					pass
+				# same height brothers
+				return
 		return	
+	
+	def case22(self, node : AVLNode):
+		
+
+		return
+		
+
+
+	""" DELETE() PSEUDO-CODE:
+	if not leaf:
+		successor / predecessor are leaves or unary nodes
+		choose one, than replace with our node (all pointers)
+		now proceed to delete node from its new place in the tree:
+
+	if leaf:
+		check for parents
+		if same height as brother:
+			detach pointer from father
+			return
+		if higher than brother by one:
+			detach pointer fron father
+			GO TO (2,2)
+		if lower than brother by one:
+			detach pointer fron father
+			GO TO (3,1)
+	if unary node (has only one child):
+		check for parents
+		if same height as brother:
+			father adopts single child (right or left)
+			return
+		if higher than brother by one:
+			father adopts single child (right or left)
+			GO TO (2,2)
+		if lower than brother by one:
+			detach pointer fron father
+			GO TO (3,1)
+	
+			
+	4 cases (up to symmetry, check):
+		1. (2,2):
+			demote father
+			move up the tree to resolve father height issues, if relevant
+			return
+		2. (3,1) and right children are (1,1):
+			single rotate left
+			update_height children and father
+			return
+		3. (3,1) and right children are (1,2):
+			double rotation
+			update_height father and children
+			proceed upwards if necessary
+			return
+		4. (3,1) and right children are (2,1):
+			single rotate left
+			update_height children and father
+			proceed upwards if necessary
+			return
+		"""
+		
+		
 
 	
+	# TODO: do join()
 	"""joins self with item and another AVLTree
 
 	@type tree2: AVLTree 
@@ -435,6 +639,7 @@ class AVLTree(object):
 		return
 
 
+	# TODO: do split()
 	"""splits the dictionary at a given node
 
 	@type node: AVLNode
@@ -470,6 +675,7 @@ class AVLTree(object):
 			self.avl_to_array_rec(node.right, lst)
 
 
+	# TODO: do max_node()
 	"""returns the node with the maximal key in the dictionary
 
 	@rtype: AVLNode
@@ -477,6 +683,7 @@ class AVLTree(object):
 	"""
 	def max_node(self):
 		return None
+
 
 	"""returns the number of items in dictionary 
 
