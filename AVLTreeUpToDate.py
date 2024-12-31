@@ -59,6 +59,15 @@ class AVLNode(object):
 	def get_size(self):
 		return self.size
 	
+	def get_brother(self):
+		if self.get_parent() is None:
+			return None
+		if self.key < self.parent.key:
+			return self.parent.right
+		else:
+			return self.parent.left
+
+	
 	#Setters
 	def set_key(self,key):
 		self.key = key
@@ -146,6 +155,7 @@ class AVLTree(object):
 		#We understand that in AVL trees, the depth of a node is the same as the searching route to the node. 
 		return self.search_helper(self.root,key,1)
 	
+
 	#The helper function:
 	#Here we used the similar method to the well known algorithem "Binary Search".
 	def search_helper(self,node,key,depth):
@@ -162,6 +172,7 @@ class AVLTree(object):
 		else:
 			return self.search_helper(node.get_right(), key, depth + 1)
             
+
 	#this function will help us maintain the max node filed
 	def find_max_node(self):
 		#If the tree is empty or the root isn't real, there's no max node
@@ -281,6 +292,7 @@ class AVLTree(object):
 			current = current.get_parent()
 		# 4) Return (x, e, h) per your assignment specs.
 		return inserted_node, e, promote_count
+
 
 	def normal_insert(self, key, val, node):
 		if (node is None) or (not node.is_real_node()):
@@ -405,6 +417,7 @@ class AVLTree(object):
 	def finger_insert(self, key, val):
 		return None, -1, -1
 
+
 	# TODO: test successor
 	""" returns the successor of a given node, that's inside the tree """
 	def successor(self, node : AVLNode):
@@ -453,20 +466,20 @@ class AVLTree(object):
 		return
 
 
-	# TODO: test DRR
-	def double_rotate_right(self, z : AVLNode):
-		zParent = z.get_parent()
-		self.rotate_right(z.get_left())
-		self.rotate_left(zParent)
-		return None
+	# TODO: test DRL
+	def double_rotate_left(self, y : AVLNode):
+		x = y.get_right()
+		x = self.rotate_right(x)
+		z = self.rotate_left(y)
+		return z
 
 	
-	# TODO: test DRL
-	def double_rotate_left(self, z : AVLNode):
-		zParent = z.get_parent()
-		self.rotate_left(z.get_right())
-		self.rotate_right(zParent)
-		return None
+	# TODO: test DRR
+	def double_rotate_right(self, y : AVLNode):
+		x = y.get_left()
+		x = self.rotate_left(x)
+		z = self.rotate_right(y)
+		return z
 	
 	
 	def switch_two_nodes(self, node1, node2):
@@ -515,24 +528,10 @@ class AVLTree(object):
 				return
 			if node.get_key() < parent.get_key():
 				# node is a left leaf
-				parent.set_left(None)
-				if node.get_height() > parent.get_right().get_height(): # higher than brother by 1
-					self.case22(parent)
-				if node.get_height() < parent.get_right().get_height(): # lower than brother by 1
-					# TODO: GO TO (3,1)
-					pass
-				# same height brothers
-				return
+				parent.set_left(None) # detach
 			else:
 				# node is a right leaf
 				parent.set_right(None)
-				if node.get_height() > parent.get_left().get_height(): # higher than brother by 1
-					self.case22(parent)
-				if node.get_height() < parent.get_left().get_height(): # lower than brother by 1
-					# TODO: GO TO (1,3)
-					pass
-				# same height brothers
-				return
 		else:
 			# node is unary
 			child = node.get_right() if node.get_right() is not None else node.get_left()
@@ -543,31 +542,68 @@ class AVLTree(object):
 			if node.get_key() < parent.get_key():
 				# node is a left unary
 				parent.set_left_with_parents(child)
-				if node.get_height() > parent.get_right().get_height(): # higher than brother by 1
-					self.case22(parent)
-				if node.get_height() < parent.get_right().get_height(): # lower than brother by 1
-					# TODO: GO TO (3,1)
-					pass
-				# same height brothers
-				return
 			else:
 				# node is a right unary
 				parent.set_right_with_parents(child)
-				if node.get_height() > parent.get_left().get_height(): # higher than brother by 1
-					self.case22(parent)
-				if node.get_height() < parent.get_left().get_height(): # lower than brother by 1
-					# TODO: GO TO (1,3)
-					pass
-				# same height brothers
-				return
+
+		parent.update_height()
+		self.check_heights(parent)		
+
 		return	
+		
 	
 	def case22(self, node : AVLNode):
-		
-
+		node.update_height()
+		# Travel up the tree
+		parent = node.get_parent()
+		if parent is not None:
+			self.check_heights(parent)
 		return
 		
 
+	def case31(self, node : AVLNode):
+		node.update_height()
+		# Rotate to fix subtree
+		if node.get_right().get_left().get_height() == node.get_right().get_right().get_height(): # CASE 2
+			self.rotate_left(node) # heights updated inside rotate
+			return
+		if node.get_right().get_left().get_height() + 1 == node.get_right().get_right().get_height(): # CASE 3
+			node = self.rotate_left(node) # heights updated inside rotate
+		if node.get_right().get_left().get_height() == node.get_right().get_right().get_height() + 1: # CASE 4
+			node = self.double_rotate_left(node) # heights updated inside rotate
+		# Check parent for none and travel up
+		parent = node.get_parent()
+		if parent is not None:
+			self.check_heights(parent)
+		return
+
+		
+	def case13(self, node : AVLNode):
+		node.update_height()
+		# Rotate to fix subtree
+		if node.get_left().get_right().get_height() == node.get_left().get_left().get_height(): # CASE 2 - symmetric
+			self.rotate_left(node) # heights updated inside rotate
+			return
+		if node.get_left().get_right().get_height() + 1 == node.get_left().get_left().get_height(): # CASE 3 - symmetric
+			node = self.rotate_right(node) # heights updated inside rotate
+		if node.get_left().get_right().get_height() == node.get_left().get_left().get_height() + 1: # CASE 4 - symmetric
+			node = self.double_rotate_right(node) # heights updated inside rotate
+		# Check parent for none and travel up
+		parent = node.get_parent()
+		if parent is not None:
+			self.check_heights(parent)
+		return
+
+
+	def check_heights(self, node : AVLNode):
+		if node.get_left().get_height() == node.get_right().get_height() and node.get_height == node.get_left().get_height() + 2:
+			self.case22(node)
+		elif node.get_left().get_height() == node.get_right().get_height() + 2:
+			self.case13(node)
+		elif node.get_left().get_height() + 2 == node.get_right().get_height():
+			self.case31(node)
+		return
+	
 
 	""" DELETE() PSEUDO-CODE:
 	if not leaf:
@@ -608,16 +644,17 @@ class AVLTree(object):
 			single rotate left
 			update_height children and father
 			return
-		3. (3,1) and right children are (1,2):
-			double rotation
-			update_height father and children
-			proceed upwards if necessary
-			return
-		4. (3,1) and right children are (2,1):
+		3. (3,1) and right children are (2,1):
 			single rotate left
 			update_height children and father
 			proceed upwards if necessary
 			return
+		4. (3,1) and right children are (1,2):
+			double rotation
+			update_height father and children
+			proceed upwards if necessary
+			return
+		
 		"""
 		
 		
