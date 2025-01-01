@@ -136,8 +136,8 @@ class AVLTree(object):
 	"""
 	Constructor, you are allowed to add more fields.
 	"""
-	def __init__(self):
-		self.root = None
+	def __init__(self, root = None):
+		self.root = root
 		self.max_node = None
 
 
@@ -507,7 +507,6 @@ class AVLTree(object):
 	@type node: AVLNode
 	@pre: node is a real pointer to a node in self
 	"""
-	# TODO: IMPORTANT: Delete "node : AVLNode" from function signature!
 	def delete(self, node):
 		if node.get_left() is not None and node.get_right() is not None:
 			# node isn't a leaf nor a unary node
@@ -523,7 +522,7 @@ class AVLTree(object):
 		parent = node.get_parent()
 		if node.get_left() is None and node.get_right() is None:
 			# node is a leaf
-			if node.parent is None: # single node in a tree
+			if parent is None: # single node in a tree
 				self = AVLTree()
 				return
 			if node.get_key() < parent.get_key():
@@ -660,7 +659,7 @@ class AVLTree(object):
 		
 
 	
-	# TODO: do join()
+	# TODO: test join()
 	"""joins self with item and another AVLTree
 
 	@type tree2: AVLTree 
@@ -673,6 +672,69 @@ class AVLTree(object):
 	or the opposite way
 	"""
 	def join(self, tree2, key, val):
+		# special cases - no root node
+		if self.root is None:
+			if tree2.get_root() is None:
+				self.insert(key,val)
+				return
+			tree2.insert(key,val)
+			self = tree2
+			return
+		elif tree2.get_root() is None:
+			self.insert(key,val)
+			return
+		# both trees have a root node
+		if self.root.get_key() < key:
+			lower = self
+			higher = tree2
+		else:
+			lower = tree2
+			higher = self
+		# Checking if they're of the same height
+		node = AVLNode(key, val)
+		if lower.get_root().get_height() == higher.get_root().get_height():
+			node.set_left(lower)
+			node.set_right(higher)
+			lower.get_root().set_parent(node)
+			higher.get_root().set_parent(node)
+			node.update_height()
+			node.update_size()
+			self.root = node
+			return
+		# Hights are different
+		if lower.get_root().get_height() < higher.get_root().get_height():
+			k = lower.get_root().get_height()
+			b = higher.get_root()
+			while b.get_height() > k:
+				b = b.get_left()
+			# add new node in place and update pointers
+			node.set_left(lower.get_root())
+			node.set_right(b)
+			node.set_parent(b.get_parent())
+			node.get_parent().set_left(node)
+			b.set_parent(node)
+			lower.get_root().set_parent(node)
+			# update hights and rebalance using delete() aid functions
+			node.update_height()
+			self = higher
+			self.check_heights(node)
+		else:
+			k = higher.get_root().get_height()
+			b = lower.get_root()
+			while b.get_height() > k:
+				b = b.get_right()
+			# add new node in place and update pointers
+			node.set_right(higher.get_root())
+			node.set_left(b)
+			node.set_parent(b.get_parent())
+			node.get_parent().set_right(node)
+			b.set_parent(node)
+			higher.get_root().set_parent(node)
+			# update hights and rebalance using delete() aid functions
+			node.update_height()
+			self = lower
+			self.check_heights(node)
+
 		return
 
 
@@ -738,6 +800,6 @@ class AVLTree(object):
 	"""
 	def get_root(self):
 		return self.root
-
+	
 
 
