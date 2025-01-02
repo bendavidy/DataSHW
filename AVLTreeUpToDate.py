@@ -415,6 +415,8 @@ class AVLTree(object):
 	and h is the number of PROMOTE cases during the AVL rebalancing
 	"""
 	def finger_insert(self, key, val):
+
+		
 		return None, -1, -1
 
 
@@ -502,6 +504,7 @@ class AVLTree(object):
 	
 	
 	# TODO delete() tests: when we delete root, leaf, unary node, middle node, min and max
+	# TODO: Update max if we deleted max
 	"""deletes node from the dictionary
 
 	@type node: AVLNode
@@ -656,8 +659,6 @@ class AVLTree(object):
 		
 		"""
 		
-		
-
 	
 	# TODO: test join()
 	"""joins self with item and another AVLTree
@@ -734,12 +735,12 @@ class AVLTree(object):
 			node.update_height()
 			self = lower
 			self.check_heights(node)
-			# TODO: FIX THIS to balance like in insert() and not delete()
+			# FIXME: balance like in insert() and not delete()
 
 		return
 
 
-	# TODO: do split()
+	# TODO: test split()
 	"""splits the dictionary at a given node
 
 	@type node: AVLNode
@@ -750,11 +751,11 @@ class AVLTree(object):
 	dictionary smaller than node.key, and right is an AVLTree representing the keys in the 
 	dictionary larger than node.key.
 	"""
-	# TODO: IMPORTANT - delete "node : AVLNode" from signature
-	def split(self, node : AVLNode):
+	def split(self, node):
 		h = self.get_root().get_height()
-		smallers = [AVLNode for i in range(h)] #TODO: replace AVLNode with None in both arrays instatiations
-		biggers = [AVLNode for i in range(h)]
+		smallers = [None for i in range(h)]
+		biggers = [None for i in range(h)]
+		# print("SMALLERS IS = ",smallers)
 		search = self.get_root()
 		# Building two arrays, of the bigger and smaller nodes in the path from the root to our split node
 		while search.get_key() != node.get_key():
@@ -764,6 +765,7 @@ class AVLTree(object):
 			else:
 				smallers.append(search)
 				search = search.get_right()
+		# print("SMALLERS IS = ",smallers)
 		if smallers[-1] is not None:
 			smallers.append(node.get_left())
 		if biggers[-1] is not None:
@@ -776,20 +778,22 @@ class AVLTree(object):
 		while biggers[j] is None:
 			j -= 1
 		# i holds the index of last item in smallers, and j is the index of the last item in biggers
+		subTree = AVLTree()
 		small = AVLTree()
 		small.root = smallers[i]
 		while i > 0:
-			subTree = AVLTree()
 			subTree.root = smallers[i-1].get_left()
-			small.join(subTree,smallers[i-1].get_key(),smallers[i-1].get_value())
+			small.join(subTree, smallers[i-1].get_key(), smallers[i-1].get_value())
 			i-=1
 		# Now same for big:
 		big = AVLTree()
-		# TODO: finish this
+		big.root = biggers[i]
+		while i > 0:
+			subTree.root = biggers[i-1].get_right()
+			big.join(subTree, biggers[i-1].get_key(), biggers[i-1].get_value())
+			i-=1
 
-
-		
-		return None, None
+		return small, big
 
 	
 	"""returns an array representing dictionary 
