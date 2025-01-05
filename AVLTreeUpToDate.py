@@ -671,9 +671,6 @@ class AVLTree(object):
 			return node.get_parent()
 		return None
 
-		
-		return
-
 
 	# TODO: test DRL
 	def double_rotate_left(self, y : AVLNode):
