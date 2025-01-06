@@ -133,6 +133,17 @@ class AVLNode(object):
         B.fields_update()
         A.fields_update()
 
+    def set_right_with_parents(self,node):
+        self.right = node
+        if node is not None:
+            node.set_parent(self)
+        return None
+
+    def set_left_with_parents(self,node):
+        self.left = node
+        node.set_parent(self)
+        return None
+    
 
 class AVLTree(object):
     """
@@ -168,7 +179,7 @@ class AVLTree(object):
 
     def insert_as_leaf(self, avl_node_1):
         e = 0
-        if not self.get_root().is_real_node():
+        if self.get_root() is None or not self.get_root().is_real_node():
             self.set_root(avl_node_1)
             avl_node_1.set_height(0)
             avl_node_1.get_left().set_parent(avl_node_1)
@@ -201,6 +212,9 @@ class AVLTree(object):
         new_node = AVLNode(key, val)
         e = self.insert_as_leaf(new_node)
 
+        print(f"\nAFTER INSERT {key}:")
+        print_tree(self.root)
+
         height_change_counter = 0
         z = new_node.get_parent()
         while z is not None:
@@ -213,16 +227,16 @@ class AVLTree(object):
             else:
                 if z.get_bfs() == 2:
                     if z.get_left().get_bfs() >= 0:
-                        self.one_R_rotation(z)
+                        self.rotate_right(z)
                     else:
-                        self.L_rotation_R_rotation(z)
+                        self.double_rotate_right(z)
                 else:
                     if z.get_right().get_bfs() <= 0:
-                        self.one_L_rotation(z)
+                        self.rotate_left(z)
                     else:
-                        self.R_rotation_L_rotation(z)
+                        self.double_rotate_left(z)
                 z = z.get_parent()
-        print("\nAFTER INSERT:")
+        print(f"\nAFTER INSERT {key}:")
         print_tree(self.root)
         return (new_node, e, height_change_counter)
 
@@ -259,7 +273,7 @@ class AVLTree(object):
         if not self.get_root().is_real_node():
             return None
         cur = self.get_root()
-        while cur.get_left().is_real_node():
+        while cur is not None and cur.get_left().is_real_node():
             cur = cur.get_left()
         return cur
 
@@ -267,7 +281,7 @@ class AVLTree(object):
         if not self.get_root().is_real_node():
             return None
         cur = self.get_root()
-        while cur.get_right().is_real_node():
+        while cur is not None and cur.get_right().is_real_node():
             cur = cur.get_right()
         return cur
 
@@ -293,7 +307,7 @@ class AVLTree(object):
 
         # 1) If tree is empty => (None, 0)
         max_n = self.max_node()
-        if max_n is None:
+        if max_n is None or max_n.is_real_node() is False:
             return (None, 0)
 
         e = 0  # number of edges traveled so far
@@ -336,59 +350,146 @@ class AVLTree(object):
             return self._search_from_node(start_node.get_right(), key, edges+1)
 
 
+    def rotate_left(self, x : AVLNode):
+        parent = x.get_parent()
+        y = x.get_right()
+
+        x.set_right(y.get_left())
+        if y.get_left() is not None and y.get_left().is_real_node():
+            y.get_left().set_parent(x)
+
+        x.set_parent(y)
+        y.set_left(x)
+
+        y.set_parent(parent)
+        if parent is not None: # Doesn't have to be a real node!
+            if parent.get_left() == x:
+                parent.set_left(y)
+            else:
+                parent.set_right(y)
+        else:
+            self.set_root(y)
+
+        # 3) Update heights (and sizes if you track those) for z and then y
+        # z.update_height()
+        # z.update_size()
+        # y.update_height()
+        # y.update_size()
+        # TODO: organize
+
+        x.fields_update()
+        y.fields_update()
+
+        return y
+
+    def rotate_right(self, y : AVLNode):
+        parent = y.get_parent()
+        x = y.get_left()
+
+        y.set_left(x.get_right())
+        if x.get_right() is not None: # Doesn't have to be a real node!
+            x.get_right().set_parent(y)
+
+        y.set_parent(x)
+        x.set_right(y)
+        x.set_parent(parent)
+        
+        if parent is not None and parent.is_real_node():
+            if parent.get_left() == y:
+                parent.set_left(x)
+            else:
+                parent.set_right(x)
+        else:
+            self.set_root(x)
+
+        # z.update_height()
+        # z.update_size()
+        # y.update_height()
+        # y.update_size()
+        # TODO: organize
+        x.fields_update()
+        y.fields_update()
+        # If you track subtree sizes, update those as well
+        return x
+
+    def double_rotate_left(self, y : AVLNode):
+        x = y.get_right()
+        x = self.rotate_right(x)
+        z = self.rotate_left(y)
+        return z
+
+
+    # TODO: test DRR
+    def double_rotate_right(self, y : AVLNode):
+        x = y.get_left()
+        x = self.rotate_left(x)
+        z = self.rotate_right(y)
+        return z
+
     # --------------------- NEW Delete() ---------------------
 
     def delete(self, node):
-        if node.get_left() is not None and node.get_right() is not None:
+        if (node.get_left() is not None and node.get_right() is not None
+            and node.get_left().is_real_node() and node.get_right().is_real_node()):
             # node isn't a leaf nor a unary node
             pre = self.predecessor(node)
             suc = self.successor(node)
             # one of them has to be a leaf or a unary node
-            if pre.get_left() is None or pre.get_right() is None:
+            if (pre.get_left() is None or pre.get_right() is None
+                or pre.get_left().is_real_node() or pre.get_right().is_real_node()):
                 self.switch_two_nodes(node, pre) # switches node with predecessor and updates heights/sizes
-            elif suc.get_left() is None or suc.get_right() is None:
+            elif (suc.get_left() is None or suc.get_right() is None
+                  or suc.get_left().is_real_node() or suc.get_right().is_real_node()):
                 self.switch_two_nodes(node, suc) # switches node with successor and updates heights/sizes
         
         # node is a leaf or unary
         parent = node.get_parent()
-        if node.get_left() is None and node.get_right() is None:
+        if (node.get_left() is None and (node.get_right() is None or not node.get_right().is_real_node())
+            or (not node.get_left().is_real_node() and (node.get_right() is None or not node.get_right().is_real_node()))):
             # node is a leaf
             # if parent is None: # single node in a tree
             if self.get_root() is node: # single node in a tree
                 self.root = None
                 self.tree_size = 0
-                print("\nAFTER DELETION:")
+                print(f"\nAFTER DELETION OF {node.get_key()}:")
                 print_tree(self.root)
                 return
             if node.get_key() < parent.get_key():
                 # node is a left leaf
-                parent.set_left(None) # detach
+                parent.set_left_with_parents(AVLNode(None, None)) # detach
+                self.tree_size -= 1
             else:
                 # node is a right leaf
-                parent.set_right(None)
+                parent.set_right_with_parents(AVLNode(None, None)) # detach
+                self.tree_size -= 1
         else:
             # node is unary
             child = node.get_right() if node.get_right() is not None else node.get_left()
             # if parent is None: # the tree is only node and his single child
             if self.get_root() is node: # the tree is only node and his single child
                 self.root = child
+                self.tree_size -= 1
                 self.root.set_parent(None)
-                print("\nAFTER DELETION:")
+                print(f"\nAFTER DELETION of {node.get_key()}:")
                 print_tree(self.root)
                 return
             if node.get_key() < parent.get_key():
                 # node is a left unary
+                self.tree_size -= 1
                 parent.set_left_with_parents(child)
             else:
                 # node is a right unary
+                self.tree_size -= 1
                 parent.set_right_with_parents(child)
 
         # parent.update_height()
         # TODO: organize
         parent.fields_update()
+        print("\nBEFORE BALANCE:")
+        print_tree(self.root)
         self.check_heights(parent)		
         
-        print("\nAFTER DELETION:")
+        print("\nAFTER BALANCE:")
         print_tree(self.root)
         return	
         
@@ -399,7 +500,7 @@ class AVLTree(object):
         node.fields_update()
         # Travel up the tree
         parent = node.get_parent()
-        if parent is not None:
+        if parent is not None and parent.is_real_node():
             self.check_heights(parent)
         return
         
@@ -411,14 +512,16 @@ class AVLTree(object):
         # Rotate to fix subtree
         if node.get_right().get_left().get_height() == node.get_right().get_right().get_height(): # CASE 2
             self.rotate_left(node) # heights updated inside rotate
+            print_tree(self.root)
             return
         if node.get_right().get_left().get_height() + 1 == node.get_right().get_right().get_height(): # CASE 3
             node = self.rotate_left(node) # heights updated inside rotate
-        if node.get_right().get_left().get_height() == node.get_right().get_right().get_height() + 1: # CASE 4
+        elif node.get_right().get_left().get_height() == node.get_right().get_right().get_height() + 1: # CASE 4
             node = self.double_rotate_left(node) # heights updated inside rotate
         # Check parent for none and travel up
         parent = node.get_parent()
-        if parent is not None:
+        if parent is not None and parent.is_real_node():
+            print_tree(self.root)
             self.check_heights(parent)
         return
 
@@ -437,7 +540,7 @@ class AVLTree(object):
             node = self.double_rotate_right(node) # heights updated inside rotate
         # Check parent for none and travel up
         parent = node.get_parent()
-        if parent is not None:
+        if parent is not None and parent.is_real_node():
             self.check_heights(parent)
         return
 
@@ -459,18 +562,18 @@ class AVLTree(object):
             if node is None or not node.is_real_node():
                 return None
             # if we dont have right child we start going upwards:
-            if node.get_right() is None:
+            if node.get_right() is None or not node.get_right().is_real_node():
                 if node.get_parent is not None:
                     while node.get_parent().get_key() < node.get_key():
                         node = node.get_parent()
-                    if node.get_parent() is None:
+                    if node.get_parent() is None or not node.get_parent().is_real_node():
                         return None
                     return node.get_parent()
                 else:
                     return None
             # if we have right child:
             node = node.get_right()
-            while node is not None and node.get_left() is not None:
+            while node is not None and node.get_left() is not None and node.is_real_node() and node.get_left().is_real_node():
                 node = node.get_left()
             return node
 
@@ -503,16 +606,16 @@ class AVLTree(object):
         if node is None or not node.is_real_node():
             return None
         # return max of left subtree, if exists
-        if node.get_left() is not None:
+        if node.get_left() is not None and node.get_left().is_real_node():
             node = node.get_left()
-            while node is not None and node.get_right() is not None:
+            while node is not None and node.get_right() is not None and node.is_real_node() and node.get_right().is_real_node():
                 node = node.get_right()
             return node
         # left subtree doesnt exist, travel up the tree:
         if node.get_parent() is not None:
             while node.get_parent().get_key() > node.get_key():
                 node = node.get_parent()
-            if node.get_parent() is None:
+            if node.get_parent() is None or not node.get_parent().is_real_node():
                 return None
             return node.get_parent()
         return None
@@ -549,6 +652,8 @@ class AVLTree(object):
             new_root.get_right().set_parent(new_root)
             self.set_root(new_root)
             self.tree_size += 1
+            print(f"\nAFTER FINGER INSERT {key}:")
+            print_tree(self.root)
             return (new_root, 0, 0)
 
         maxn = self.max_node()
@@ -579,17 +684,19 @@ class AVLTree(object):
             else:
                 if z.get_bfs() == 2:
                     if z.get_left().get_bfs() >= 0:
-                        self.one_R_rotation(z)
+                        self.rotate_right(z)
                     else:
-                        self.L_rotation_R_rotation(z)
+                        self.double_rotate_right(z)
                 else:
                     if z.get_right().get_bfs() <= 0:
-                        self.one_L_rotation(z)
+                        self.rotate_left(z)
                     else:
-                        self.R_rotation_L_rotation(z)
+                        self.double_rotate_left(z)
                 z = z.get_parent()
+        print(f"\nAFTER FINGER INSERT {key}:")
+        print_tree(self.root)
         return (new_node, e, height_change_counter)
-
+    
     # --------------- split(x) ---------------
     def split(self, x):
         self._bring_to_root(x)
@@ -608,11 +715,11 @@ class AVLTree(object):
         t1.set_root(left_sub)
         t1.tree_size = self._count_real_nodes(left_sub)
 
-        t2 = AVLTree()
-        t2.set_root(right_sub)
-        t2.tree_size = self._count_real_nodes(right_sub)
+        c = AVLTree()
+        c.set_root(right_sub)
+        c.tree_size = self._count_real_nodes(right_sub)
 
-        return (t1, t2)
+        return (t1, c)
 
     def _count_real_nodes(self, node):
         if not node or not node.is_real_node():
@@ -652,14 +759,14 @@ class AVLTree(object):
                 if abs(z.get_bfs()) > 1:
                     if z.get_bfs() == 2:
                         if z.get_left().get_bfs() >= 0:
-                            t.one_R_rotation(z)
+                            t.rotate_right(z)
                         else:
-                            t.L_rotation_R_rotation(z)
+                            t.double_rotate_right(z)
                     else:
                         if z.get_right().get_bfs() <= 0:
-                            t.one_L_rotation(z)
+                            t.rotate_left(z)
                         else:
-                            t.R_rotation_L_rotation(z)
+                            t.double_rotate_left(z)
                 z = z.get_parent()
 
             self.set_root(t.get_root())
@@ -689,12 +796,12 @@ class AVLTree(object):
                             if z.get_left().get_bfs() >= 0:
                                 t.one_R_rotation(z)
                             else:
-                                t.L_rotation_R_rotation(z)
+                                t.double_rotate_right(z)
                         else:
                             if z.get_right().get_bfs() <= 0:
-                                t.one_L_rotation(z)
+                                t.rotate_left(z)
                             else:
-                                t.R_rotation_L_rotation(z)
+                                t.double_rotate_left(z)
                     z = z.get_parent()
 
                 self.set_root(t.get_root())
@@ -785,22 +892,22 @@ def test_main_functions(AVLTreeClass):
     if node_10 is None:
         print("  [FAIL] key=10 not found, cannot split!")
     else:
-        t1, t2 = treeA.split(node_10)
+        t1, c = treeA.split(node_10)
         print("  => After split at key=10 (discard 10).")
         print("  t1 in-order:", t1.avl_to_array())
-        print("  t2 in-order:", t2.avl_to_array())
+        print("  c in-order:", c.avl_to_array())
         check_tree_validity(t1, "B t1")
-        check_tree_validity(t2, "B t2")
+        check_tree_validity(c, "B c")
 
         # SCENARIO C: Join them back with new node key=10
-        print("\n[SCENARIO C] Join t1 & t2 with new node key=10")
+        print("\n[SCENARIO C] Join t1 & c with new node key=10")
         mx_t1 = t1.max_node()
-        mn_t2 = t2.min_node()
-        if mx_t1 and mn_t2 and mx_t1.get_key() < mn_t2.get_key():
-            t2.join(t1, 10, "val10")
-            joined = t2
+        mn_c = c.min_node()
+        if mx_t1 and mn_c and mx_t1.get_key() < mn_c.get_key():
+            c.join(t1, 10, "val10")
+            joined = c
         else:
-            t1.join(t2, 10, "val10")
+            t1.join(c, 10, "val10")
             joined = t1
         check_tree_validity(joined, "C joined after re-join")
         print("  => joined in-order:", joined.avl_to_array())

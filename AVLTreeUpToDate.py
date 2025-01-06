@@ -132,14 +132,14 @@ class AVLNode(object):
 		self.right = node
 		return None
 	
+	def set_left(self, node):
+		self.left = node
+		return None
+	
 	def set_right_with_parents(self,node):
 		self.right = node
 		if node is not None:
 			node.set_parent(self)
-		return None
-	
-	def set_left(self, node):
-		self.left = node
 		return None
 	
 	def set_left_with_parents(self,node):
