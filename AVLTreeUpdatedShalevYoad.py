@@ -80,12 +80,14 @@ class AVLNode(object):
 
     """fields_update: Recompute (height, bfs) for this node in O(1)."""
     def fields_update(avl_node):
-        left_h = -1
-        right_h = -1
         if avl_node.get_left() is not None and avl_node.get_left().is_real_node():
             left_h = avl_node.get_left().get_height()
+        else:
+            left_h = -1
         if avl_node.get_right() is not None and avl_node.get_right().is_real_node():
             right_h = avl_node.get_right().get_height()
+        else:
+            right_h = -1
 
         avl_node.set_height(1 + max(left_h, right_h))
         avl_node.set_bfs(left_h - right_h)
@@ -164,7 +166,9 @@ class AVLTree(object):
     def size(self):
         return self.tree_size
 
-    def search(self, key):
+    # --------------- COPIED search() ---------------
+
+    # def search(self, key):
         x = self.get_root()
         depth = 0
         while x is not None and x.is_real_node():
@@ -177,6 +181,32 @@ class AVLTree(object):
                 x = x.get_right()
         return None, -1
 
+    #The helper function:
+	#Here we used the similar method to the well known algorithem "Binary Search".
+    def search_helper(self,node,key,depth):
+        # Base case1:
+        if node is None or not node.is_real_node():
+            return None, depth - 1
+        # Base case2:
+        if node.get_key() == key:
+            return node, depth
+        # Since AVL is kind of a binary search tree, we used the fact that the keys of the left side of the tree are smaller than the node's key,
+        # also the right side is bigger.
+        if key < node.get_key():
+            return self.search_helper(node.get_left(), key, depth + 1)
+        else:
+            return self.search_helper(node.get_right(), key, depth + 1)
+        
+    def search(self, key):
+        #We used helper function - Search_helper.
+        #We passed 1 as the value of the depth since we have been asked to return the length of the search route + 1.
+        #We understand that in AVL trees, the depth of a node is the same as the searching route to the node. 
+        print("\nBEFORE SEARCH:")
+        print_tree(self.root)
+        return self.search_helper(self.root,key,1)
+        
+    # ---------------  OUR search() ---------------
+        
     def insert_as_leaf(self, avl_node_1):
         e = 0
         if self.get_root() is None or not self.get_root().is_real_node():
@@ -208,15 +238,8 @@ class AVLTree(object):
         self.tree_size += 1
         return e
 
-    def insert(self, key, val):
-        new_node = AVLNode(key, val)
-        e = self.insert_as_leaf(new_node)
-
-        print(f"\nAFTER INSERT {key}:")
-        print_tree(self.root)
-
+    def rebalance_from_insert(self, z):
         height_change_counter = 0
-        z = new_node.get_parent()
         while z is not None:
             old_h = z.get_height()
             z.fields_update()
@@ -227,15 +250,26 @@ class AVLTree(object):
             else:
                 if z.get_bfs() == 2:
                     if z.get_left().get_bfs() >= 0:
-                        self.rotate_right(z)
+                        z = self.rotate_right(z)
                     else:
-                        self.double_rotate_right(z)
+                        z = self.double_rotate_right(z)
                 else:
                     if z.get_right().get_bfs() <= 0:
-                        self.rotate_left(z)
+                        z = self.rotate_left(z)
                     else:
-                        self.double_rotate_left(z)
-                z = z.get_parent()
+                        z = self.double_rotate_left(z)
+        return height_change_counter
+
+    def insert(self, key, val):
+        new_node = AVLNode(key, val)
+        e = self.insert_as_leaf(new_node)
+
+        print(f"\nAFTER INSERT {key}:")
+        print_tree(self.root)
+
+        z = new_node.get_parent()
+        # Rebalancing the tree:
+        height_change_counter =  self.rebalance_from_insert(z)
         print(f"\nAFTER INSERT {key}:")
         print_tree(self.root)
         return (new_node, e, height_change_counter)
@@ -413,16 +447,14 @@ class AVLTree(object):
         return x
 
     def double_rotate_left(self, y : AVLNode):
-        x = y.get_right()
-        x = self.rotate_right(x)
+        x = self.rotate_right(y.get_right())
         z = self.rotate_left(y)
         return z
 
 
     # TODO: test DRR
     def double_rotate_right(self, y : AVLNode):
-        x = y.get_left()
-        x = self.rotate_left(x)
+        x = self.rotate_left(y.get_left())
         z = self.rotate_right(y)
         return z
 
@@ -495,9 +527,6 @@ class AVLTree(object):
         
 
     def case22(self, node : AVLNode):
-        # node.update_height()
-        # TODO: organize
-        node.fields_update()
         # Travel up the tree
         parent = node.get_parent()
         if parent is not None and parent.is_real_node():
@@ -506,9 +535,6 @@ class AVLTree(object):
         
 
     def case31(self, node : AVLNode):
-        # node.update_height()
-        # TODO: organize
-        node.fields_update()
         # Rotate to fix subtree
         if node.get_right().get_left().get_height() == node.get_right().get_right().get_height(): # CASE 2
             self.rotate_left(node) # heights updated inside rotate
@@ -519,7 +545,7 @@ class AVLTree(object):
         elif node.get_right().get_left().get_height() == node.get_right().get_right().get_height() + 1: # CASE 4
             node = self.double_rotate_left(node) # heights updated inside rotate
         # Check parent for none and travel up
-        parent = node.get_parent()
+        parent = node.get_parent() if node is not None else None
         if parent is not None and parent.is_real_node():
             print_tree(self.root)
             self.check_heights(parent)
@@ -527,25 +553,23 @@ class AVLTree(object):
 
         
     def case13(self, node : AVLNode):
-        # node.update_height()
-        # TODO: organize
-        node.fields_update()
         # Rotate to fix subtree
         if node.get_left().get_right().get_height() == node.get_left().get_left().get_height(): # CASE 2 - symmetric
             self.rotate_left(node) # heights updated inside rotate
             return
         if node.get_left().get_right().get_height() + 1 == node.get_left().get_left().get_height(): # CASE 3 - symmetric
             node = self.rotate_right(node) # heights updated inside rotate
-        if node.get_left().get_right().get_height() == node.get_left().get_left().get_height() + 1: # CASE 4 - symmetric
+        elif node.get_left().get_right().get_height() == node.get_left().get_left().get_height() + 1: # CASE 4 - symmetric
             node = self.double_rotate_right(node) # heights updated inside rotate
         # Check parent for none and travel up
-        parent = node.get_parent()
+        parent = node.get_parent() if node is not None else None
         if parent is not None and parent.is_real_node():
             self.check_heights(parent)
         return
 
 
     def check_heights(self, node : AVLNode):
+        node.fields_update()
         left_height = node.get_left().get_height() if node.get_left() is not None else -1
         right_height = node.get_right().get_height() if node.get_right() is not None else -1
         
@@ -697,37 +721,115 @@ class AVLTree(object):
         print_tree(self.root)
         return (new_node, e, height_change_counter)
     
-    # --------------- split(x) ---------------
-    def split(self, x):
-        self._bring_to_root(x)
-        left_sub = x.get_left()
-        right_sub = x.get_right()
-        if left_sub.is_real_node():
-            left_sub.set_parent(None)
-        if right_sub.is_real_node():
-            right_sub.set_parent(None)
-        if x.is_real_node():
-            self.tree_size -= 1  # removing x from our tree
-        self.set_root(AVLNode(None, None))
-        self.tree_size = 0
+    # --------------- COPIED split(x) ---------------
+    # def split(self, x):
+    #     self._bring_to_root(x)
+    #     left_sub = x.get_left()
+    #     right_sub = x.get_right()
+    #     if left_sub.is_real_node():
+    #         left_sub.set_parent(None)
+    #     if right_sub.is_real_node():
+    #         right_sub.set_parent(None)
+    #     if x.is_real_node():
+    #         self.tree_size -= 1  # removing x from our tree
+    #     self.set_root(AVLNode(None, None))
+    #     self.tree_size = 0
 
-        t1 = AVLTree()
-        t1.set_root(left_sub)
-        t1.tree_size = self._count_real_nodes(left_sub)
+    #     t1 = AVLTree()
+    #     t1.set_root(left_sub)
+    #     t1.tree_size = self._count_real_nodes(left_sub)
 
-        c = AVLTree()
-        c.set_root(right_sub)
-        c.tree_size = self._count_real_nodes(right_sub)
+    #     c = AVLTree()
+    #     c.set_root(right_sub)
+    #     c.tree_size = self._count_real_nodes(right_sub)
 
-        return (t1, c)
+    #     return (t1, c)
 
     def _count_real_nodes(self, node):
         if not node or not node.is_real_node():
             return 0
         return 1 + self._count_real_nodes(node.get_left()) + self._count_real_nodes(node.get_right())
 
-    # --------------- join(t, k, v) ---------------
-    def join(self, t, k, v):
+    # --------------- MY SPLIT() ---------------
+    def split(self, node):
+        h = self.get_root().get_height()
+        if h < 1:
+            return AVLTree(), AVLTree()
+        print("Height is: ",h)
+        smallerTrees = []
+        smallerNodes = []
+        biggerTrees = []
+        biggerNodes = []
+        search = self.get_root()
+        # Building arrays, of the bigger and smaller trees/nodes in the path from the root to our split node
+        while search.get_key() != node.get_key():
+            if node.get_key() < search.get_key():
+                biggerNodes.append(search)
+                biggerTrees.append(search.get_right()) 
+                search = search.get_left()
+            else:
+                smallerNodes.append(search)
+                smallerTrees.append(search.get_left()) 
+                search = search.get_right()
+
+        # notice the order of the arrays is reversed, so we can build the trees in the correct order
+        # plus - the lengths of the arrays are the same, so we can iterate over them together
+
+        if smallerTrees is not [] and node.get_left() is not None and node.get_left().is_real_node():
+            smallerTrees.append(node.get_left())
+        if biggerTrees is not [] and node.get_right() is not None and node.get_right().is_real_node():
+            biggerTrees.append(node.get_right())
+
+        print("smallerTrees IS = ",smallerTrees)
+        print("smallerNodes IS = ",smallerNodes)
+        print("BiggerTrees IS = ",biggerTrees)
+        print("BiggerNodes IS = ",biggerNodes)
+
+        subTree = AVLTree()
+        # Now build the two trees from these arrays, in reverse order - to maintain small time complexity
+        # Always - either trees amount = nodes amount, or trees amount = nodes amount + 1. Depends on the node's children
+        small = AVLTree()
+
+        # if len(smallerNodes) > 0:
+        #     i = len(smallerNodes) - 1
+        #     smallerNodes[i].set_right(node.get_left())
+            
+
+        if len(smallerTrees) > 0:
+            i = len(smallerTrees) - 1
+            small.set_root(smallerTrees[i]) 
+            small.get_root().set_parent(None)
+            while i > 0:
+                subTree.root = smallerTrees[i-1]
+                subTree.get_root().set_parent(None)
+                small.join(subTree, smallerTrees[i-1].get_key(), smallerTrees[i-1].get_value())
+                i-=1
+            if small.get_root() is not None:
+                small.get_root().set_parent(None)
+            for node in smallerNodes:
+                small.insert(node.get_key(), node.get_value())
+
+
+
+        big = AVLTree()
+        if len(biggerTrees) > 0:
+            j = len(biggerTrees) - 1
+            big.set_root(biggerTrees[j]) 
+            big.get_root().set_parent(None)
+            while j > 0:
+                subTree.root = biggerTrees[j-1].get_right()
+                subTree.get_root().set_parent(None)
+                big.join(subTree, biggerTrees[j-1].get_key(), biggerTrees[j-1].get_value())
+                j-=1
+            if big.get_root() is not None:
+                big.get_root().set_parent(None)
+            for node in biggerNodes:
+                big.insert(node.get_key(), node.get_value())
+
+
+        return small, big
+    # --------------- copied join(t, k, v) ---------------
+    # def join(self, t, k, v):
         if not t.get_root().is_real_node():
             self.insert(k, v)
             return
@@ -811,7 +913,85 @@ class AVLTree(object):
             else:
                 raise ValueError("join: 't' not strictly < or > 'self'.")
 
+    def join(self, tree2, key, val):
+        # special cases - no root node
+        if self.root is None or not self.root.is_real_node():
+            if tree2.get_root() is None or not tree2.get_root().is_real_node():
+                self.insert(key,val)
+                return
+            tree2.insert(key,val)
+            self = tree2
+            return
+        elif tree2.get_root() is None:
+            self.insert(key,val)
+            return
+        print(f"\nAFTER JOIN {key}:")
+        print_tree(self.root)
+        # both trees have a root node
+        if self.root.get_key() < key:
+            lower = self
+            higher = tree2
+        else:
+            lower = tree2
+            higher = self
+        # Checking if they're the same height
+        node = AVLNode(key, val)
+        if lower.get_root().get_height() == higher.get_root().get_height():
+            node.set_left(lower.get_root())
+            node.set_right(higher.get_root())
+            lower.get_root().set_parent(node)
+            higher.get_root().set_parent(node)
+            # node.update_height()
+            # node.update_size()
+            # TODO: organize
+            node.fields_update()
+            self.root = node
+            return
+        # Hights are different
+        if lower.get_root().get_height() < higher.get_root().get_height():
+            k = lower.get_root().get_height()
+            b = higher.get_root()
+            while b.get_height() > k:
+                b = b.get_left()
+            # add new node in place and update pointers
+            node.set_left(lower.get_root())
+            node.set_right(b)
+            node.set_parent(b.get_parent())
+            node.get_parent().set_left(node)
+            b.set_parent(node)
+            lower.get_root().set_parent(node)
+            # update hights and rebalance using delete() aid functions
+            # TODO: organize
+            node.fields_update()
+            self.set_root(higher.get_root())
+            # self.check_heights(node)
+        else:
+            k = higher.get_root().get_height()
+            b = lower.get_root()
+            while b.get_height() > k:
+                b = b.get_right()
+            # add new node in place and update pointers
+            node.set_right(higher.get_root())
+            node.set_left(b)
+            node.set_parent(b.get_parent())
+            node.get_parent().set_right(node)
+            b.set_parent(node)
+            higher.get_root().set_parent(node)
+            # update hights and rebalance using delete() aid functions
+            # node.update_height()
+            # TODO: organize
+            node.fields_update()
+            self.set_root(lower.get_root())
+            # self.check_heights(node)
+            # FIXME: balance like in insert() and not delete()
+        self.rebalance_from_insert(node)
 
+        print(f"\nAFTER JOIN {key}:")
+        print_tree(self.root)
+
+        return
+
+# --------------- my join(t, k, v) ---------------
 # ------------------ TESTER FOR MAIN FUNCTIONS ------------------
 def test_main_functions(AVLTreeClass):
     """
